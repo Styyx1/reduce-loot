@@ -1,0 +1,7 @@
+name = "PLACEHOLDER"
+description = "PLACEHOLDER"
+modversion = "1.0.0"
+
+
+[configs]
+commonlib_toml = true

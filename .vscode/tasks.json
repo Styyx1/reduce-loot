@@ -1,0 +1,24 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "VM: build AE",
+      "type": "shell",
+      "command": "build-mod",
+      "args": ["${workspaceFolderBasename}", "--libxse"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+
+    {
+      "label": "VM: build clean",
+      "type": "shell",
+      "command": "build-mod",
+      "args": ["${workspaceFolderBasename}", "--clean", "--libxse"],
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    }
+  ]
+}

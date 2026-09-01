@@ -1,0 +1,19 @@
+{
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}/.vscode",
+    "--background-index",
+    "--completion-style=detailed",
+    "--pch-storage=disk"
+  ],
+  "files.associations": {
+    "*.h": "cpp",
+    "*.hpp": "cpp",
+    "*.inl": "cpp"
+  },
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+  "[cpp]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  }
+}

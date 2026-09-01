@@ -1,0 +1,6 @@
+[submodule "lib/commonlibsse"]
+	path = lib/commonlibsse
+	url = https://github.com/libxse/commonlibsse.git
+[submodule "extern/styyx-utils"]
+	path = extern/styyx-utils
+	url = git@github.com:Styyx1/StyyxUtils.git

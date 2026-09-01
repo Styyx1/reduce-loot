@@ -1,0 +1,13 @@
+# dot folders
+.cache/
+.idea/
+.vs/
+.xmake/
+
+# folders
+build/
+vs*/
+
+# files
+*.zip
+compile_commands.json
