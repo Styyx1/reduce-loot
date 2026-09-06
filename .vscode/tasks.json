@@ -2,11 +2,21 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "WINE: build mod",
+      "type": "shell",
+      "command": "build-wine",
+      "args": ["--release"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+
+    {
       "label": "VM: build AE",
       "type": "shell",
       "command": "build-mod",
       "args": ["${workspaceFolderBasename}", "--libxse"],
-      "group": { "kind": "build", "isDefault": true },
+      "group": { "kind": "build", "isDefault": false },
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
     },

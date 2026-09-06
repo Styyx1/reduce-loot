@@ -46,10 +46,13 @@ IncludeCategories:
     Priority: 2
   - Regex: '^<SKSE/'
     Priority: 3
-  - Regex: '^<'
+  - Rexex: '^<REX/'
     Priority: 4
-  - Regex: '^"'
+  - Regex: '^<'
     Priority: 5
+  - Regex: '^"'
+    Priority: 6
+
 
 AlwaysBreakTemplateDeclarations: Yes
 BreakConstructorInitializers: BeforeColon

@@ -1,7 +1,7 @@
-name = "PLACEHOLDER"
-description = "PLACEHOLDER"
+name = "styyx-reduce-loot"
+description = "reduces loot gained"
 modversion = "1.0.0"
-
 
 [configs]
 commonlib_toml = true
+use-fui = true

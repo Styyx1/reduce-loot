@@ -1,0 +1,25 @@
+{
+  "struct with semicolon": {
+    "scope": "cpp,c",
+    "prefix": "struct",
+    "body": [
+      "struct ${1:Name} {",
+      "\t$0",
+      "};"
+    ],
+    "description": "Struct definition with semicolon"
+  },
+  "class with semicolon": {
+    "scope": "cpp",
+    "prefix": "class",
+    "body": [
+      "class ${1:Name} {",
+      "public:",
+      "",
+      "private:",
+      "\t$0",
+      "};"
+    ],
+    "description": "Class definition with semicolon"
+  }
+}

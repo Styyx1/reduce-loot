@@ -35,7 +35,6 @@ def xmake_value(value):
         return f'"{value}"'
     return str(value)
 
-
 def add_configs(text, config):
     configs = config.get("configs", {})
 
@@ -49,7 +48,6 @@ def add_configs(text, config):
         "\n".join(lines) + ("\n" if lines else "")
     )
 
-
 def change_xmakefile(text, config):
     text = change_modname(text, config)
     text = change_version(text, config)
@@ -57,14 +55,11 @@ def change_xmakefile(text, config):
     text = add_configs(text, config)    
     return text
 
-
-
 def main():
     text = path.read_text(encoding="utf-8")
     text = change_xmakefile(text, config)
 
     path.write_text(text, encoding="utf-8")
-
 
 if __name__ == "__main__":
     main()
