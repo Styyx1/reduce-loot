@@ -1,12 +1,16 @@
 ---
 BasedOnStyle: Microsoft
+Language: Cpp
+Standard: C++23
 ColumnLimit: 120
 
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
-NamespaceIndentation: None
+NamespaceIndentation: All
 IndentCaseLabels: true
+
+
 
 BreakBeforeBraces: Allman
 BraceWrapping:
@@ -19,6 +23,7 @@ BraceWrapping:
   BeforeElse: true
   BeforeCatch: true
 
+DerivePointerAlignment: false
 PointerAlignment: Left
 ReferenceAlignment: Left
 

@@ -1,5 +1,4 @@
 #include "QuickLootAPI.h"
-#include "RE/T/TESObjectREFR.h"
 using namespace StyyxUtil;
 
 // Constants:
@@ -8,6 +7,7 @@ constexpr RE::FormID EXCEPTION_LIST_ID = 0x3;
 constexpr RE::FormID EXCEPTION_KYWD_ID = 0x4;
 constexpr RE::FormID DAE_ART_ID = 0xA8668; // Skyrim
 constexpr RE::FormID DISALLOW_ID = 0xC27BD;
+constexpr auto UPDATE_TIME = 480.0;
 
 constexpr auto TOML_P_D = "Data/SKSE/Plugins/drop-chances.toml";
 constexpr auto TOML_P_C = "Data/SKSE/Plugins/drop-chances_custom.toml";
@@ -25,7 +25,6 @@ RE::TESObjectREFR *openingRef{};
 std::unordered_set<RE::FormID> g_teamMateStorage{};
 
 namespace POOP {
-
 namespace FORMS {
 inline RE::BGSListForm *exception_formlist{nullptr};
 inline RE::BGSListForm *exception_keyword_formlist{nullptr};
@@ -78,7 +77,7 @@ void UpdateSettings(const bool a_save = false) {
   a_save ? t->Save() : t->Load();
 }
 
-} // namespace CONF
+} // namespace CONF 
 
 void FillInFoll() {
   auto player = RE::PlayerCharacter::GetSingleton();
@@ -143,7 +142,7 @@ struct Updater {
       t.Start();
       FillInFoll();
     }
-    if (t.ElapsedSeconds() >= 480) {
+    if (t.ElapsedSeconds() >= UPDATE_TIME) {
       t.Reset();
       FillInFoll();
     }
@@ -161,7 +160,6 @@ struct MenuEventListener : REX::TSingleton<MenuEventListener>,
 
   bool bContainerMenuOpen = false;
 
-  // in class Register function is my addition.
   static void RegisterMenu() {
     auto ui = RE::UI::GetSingleton();
     if (ui) {
