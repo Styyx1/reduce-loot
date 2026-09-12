@@ -7,7 +7,11 @@ constexpr RE::FormID EXCEPTION_LIST_ID = 0x3;
 constexpr RE::FormID EXCEPTION_KYWD_ID = 0x4;
 constexpr RE::FormID DAE_ART_ID        = 0xA8668; // Skyrim
 constexpr RE::FormID DISALLOW_ID       = 0xC27BD;
-constexpr double UPDATE_TIME           = 480.0;
+
+// checks every x seconds if a follower is near
+// 480 seems reasonable imo as it also checks every interior cell leave and enter and load game
+// TODO: maybe make it a setting but needs actual playtesting from people playing with followers first
+constexpr double UPDATE_TIME = 480.0;
 
 constexpr auto TOML_P_D     = "Data/SKSE/Plugins/drop-chances.toml";
 constexpr auto TOML_P_C     = "Data/SKSE/Plugins/drop-chances_custom.toml";
@@ -119,6 +123,7 @@ namespace POOP
             }
             RE::TESObjectCELL* cell = RE::TESForm::LookupByID<RE::TESObjectCELL>(a_event->cellID);
 
+            // exclude exteriors cause there.are.so.many.exterior.cells...
             if (cell && cell->IsExteriorCell())
             {
                 return RE::BSEventNotifyControl::kContinue;
@@ -145,7 +150,6 @@ namespace POOP
 
     struct Updater
     {
-
         static void Call(RE::PlayerCharacter* a_player, float a_delta)
         {
 
@@ -168,10 +172,9 @@ namespace POOP
     // Legacy credits:
     // https://github.com/Horf/HiddenLoot/blob/97b085ead7b7fd1fd3c8810cf617d2b515ecaf0a/src/LootHook.h#L95
     // I started out using the MenuHandling from the above code but changed pretty
-    // much everything about it now Still, credits for the above author
+    // much everything about it now still, credits for the above author
     struct MenuEventListener : REX::TSingleton<MenuEventListener>, RE::BSTEventSink<RE::MenuOpenCloseEvent>
     {
-
         bool bContainerMenuOpen = false;
 
         static void RegisterMenu()
