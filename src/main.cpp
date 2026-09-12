@@ -364,7 +364,6 @@ namespace POOP
             RE::TESObjectARMO* armo = a_item->As<RE::TESObjectARMO>();
             if (armo)
             {
-
                 using slot = RE::BGSBipedObjectForm::BipedObjectSlot;
                 switch (armo->GetSlotMask())
                 {
@@ -426,7 +425,6 @@ namespace POOP
                 {
                     continue;
                 }
-                REX::INFO("checking {}", obj->GetName());
                 if (!ProcessItem(obj, obj->GetPlayable()))
                 {
                     inv.erase(&items);
@@ -438,10 +436,6 @@ namespace POOP
         {
             openingRef            = a_event->container.get().get();
             openingActorInventory = true;
-            if (openingRef)
-            {
-                REX::INFO("Opening ref is {}", openingRef->GetName());
-            }
         }
 
         static void OnClosing(QuickLoot::API::Events::CloseLootMenuEvent* a_event)
@@ -476,7 +470,6 @@ namespace POOP
     };
 
 } // namespace POOP
-
 void List(SKSE::MessagingInterface::Message* a_msg)
 {
     switch (a_msg->type)
@@ -499,7 +492,6 @@ void List(SKSE::MessagingInterface::Message* a_msg)
             break;
     }
 }
-
 SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
 {
     SKSE::Init(a_skse, {.trampoline = true});
@@ -510,4 +502,3 @@ SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
     }
     return true;
 }
-⏎
