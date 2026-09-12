@@ -1,3 +1,5 @@
+#include "QuickLootAPI.h"
+#include "RE/T/TESObjectREFR.h"
 using namespace StyyxUtil;
 
 // Constants:
@@ -150,15 +152,14 @@ struct Updater {
   static inline REL::THookVFT func{RE::VTABLE_PlayerCharacter[0], 0xad, Call};
 };
 
-// heavily inspired and mostly copied from:
+// Legacy credits:
 // https://github.com/Horf/HiddenLoot/blob/97b085ead7b7fd1fd3c8810cf617d2b515ecaf0a/src/LootHook.h#L95
-// comments describe what I added as required by GPL iirc
+// I started out using the MenuHandling from the above code but changed pretty
+// much everything about it now Still, credits for the above author
 struct MenuEventListener : REX::TSingleton<MenuEventListener>,
                            RE::BSTEventSink<RE::MenuOpenCloseEvent> {
-  std::atomic<bool> bLootMenuOpen{false};
-  std::atomic<long long> lastLootMenuCloseTime{0};
-  std::atomic<bool> bContainerMenuOpen{false};
-  std::atomic<bool> bOtherMenuOpen{false};
+
+  bool bContainerMenuOpen = false;
 
   // in class Register function is my addition.
   static void RegisterMenu() {
@@ -168,6 +169,7 @@ struct MenuEventListener : REX::TSingleton<MenuEventListener>,
       REX::INFO("registered for inventory");
     }
   }
+
   RE::BSEventNotifyControl
   ProcessEvent(const RE::MenuOpenCloseEvent *a_event,
                RE::BSTEventSource<RE::MenuOpenCloseEvent> *) override {
@@ -175,43 +177,15 @@ struct MenuEventListener : REX::TSingleton<MenuEventListener>,
       return RE::BSEventNotifyControl::kContinue;
     }
 
-    static const RE::BSFixedString lootMenuName("LootMenu");
-
-    if (a_event->menuName == lootMenuName) {
-      bLootMenuOpen = a_event->opening;
-      if (!a_event->opening) {
-        auto now = std::chrono::steady_clock::now().time_since_epoch();
-        lastLootMenuCloseTime =
-            std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
-      }
-    } else if (a_event->menuName == RE::ContainerMenu::MENU_NAME) {
+    if (a_event->menuName == RE::ContainerMenu::MENU_NAME) {
       // bool and ref reset is my addition
-      bContainerMenuOpen.store(a_event->opening);
+      bContainerMenuOpen = a_event->opening;
       if (!a_event->opening) {
         openingActorInventory = false;
         openingRef = nullptr;
       }
-    } else if (a_event->menuName == RE::InventoryMenu::MENU_NAME ||
-               a_event->menuName == RE::MagicMenu::MENU_NAME ||
-               a_event->menuName == RE::FavoritesMenu::MENU_NAME ||
-               a_event->menuName == RE::BarterMenu::MENU_NAME ||
-               a_event->menuName == RE::CraftingMenu::MENU_NAME ||
-               a_event->menuName == RE::GiftMenu::MENU_NAME) {
-      bOtherMenuOpen = a_event->opening;
     }
     return RE::BSEventNotifyControl::kContinue;
-  }
-  bool IsLootMenuEffectivelyOpen() const {
-    if (bLootMenuOpen)
-      return true;
-    auto now = std::chrono::steady_clock::now().time_since_epoch();
-    auto nowMs =
-        std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
-    // 250ms grace period bridges the gap during UI fade-out animations or
-    // rapid crosshair jitter to prevent items from "blinking" into view
-    if (nowMs - lastLootMenuCloseTime < 250)
-      return true;
-    return false;
   }
 };
 
@@ -227,8 +201,6 @@ struct OpenInvActorHook {
 
     func(a_ref, a_mode);
 
-    // TODO: find any way to handle Quickloot IE, maybe its api, maybe with the
-    // menu listener from reduced loot, idk yet
     auto menu = MenuEventListener::GetSingleton();
     if (menu->bContainerMenuOpen) {
       openingActorInventory = false;
@@ -238,8 +210,8 @@ struct OpenInvActorHook {
   static inline REL::THook func{REL::ID(24715), 0x3E7, Call};
 };
 
-// TODO: check if requiem changes the keyword to something else or just changes
-// the keyword's EDID
+// TODO: check if requiem changes the keyword to something else or just
+// changes the keyword's EDID
 bool IsItemArtifact(RE::TESBoundObject *a_item) {
 
   if (auto kwdf = a_item->As<RE::BGSKeywordForm>();
@@ -388,6 +360,51 @@ bool ProcessItem(RE::TESBoundObject *a_item, bool a_original) {
   return true;
 }
 
+struct QLoot {
+
+  static void
+  HandleQuickLoot(QuickLoot::API::Events::ModifyInventoryEvent *a_event) {
+    auto &inv = a_event->inventory;
+
+    for (auto &items : inv) {
+      auto obj = items.entry->object;
+      if (!obj) {
+        continue;
+      }
+      REX::INFO("checking {}", obj->GetName());
+      if (!ProcessItem(obj, obj->GetPlayable())) {
+        inv.erase(&items);
+      }
+    }
+  }
+
+  static void OnOpening(QuickLoot::API::Events::OpeningLootMenuEvent *a_event) {
+    openingRef = a_event->container.get().get();
+    openingActorInventory = true;
+    if (openingRef) {
+      REX::INFO("Opening ref is {}", openingRef->GetName());
+    }
+  }
+
+  static void OnClosing(QuickLoot::API::Events::CloseLootMenuEvent *a_event) {
+    openingRef = nullptr;
+    openingActorInventory = false;
+  }
+
+  static void RegisterQuickLoot() {
+    if (QuickLoot::API::QuickLootAPI::Init("styyx-reduce-loot")) {
+      REX::INFO("Registered for quickloot");
+    }
+  }
+
+  static void RegisterQuickLootHandler() {
+    using namespace QuickLoot::API;
+    QuickLootAPI::RegisterOpeningLootMenuHandler(OnOpening);
+    QuickLootAPI::RegisterModifyInventoryHandler(HandleQuickLoot);
+    QuickLootAPI::RegisterCloseLootMenuHandler(OnClosing);
+  }
+};
+
 struct PlayableHooks {
   static bool CallArmor(RE::TESBoundObject *a_armo) {
     return ProcessItem(a_armo, funcArmor(a_armo));
@@ -405,10 +422,16 @@ struct PlayableHooks {
 
 void List(SKSE::MessagingInterface::Message *a_msg) {
   switch (a_msg->type) {
+
+  case SKSE::MessagingInterface::kPostLoad:
+    POOP::QLoot::RegisterQuickLoot();
+
   case SKSE::MessagingInterface::kDataLoaded:
     POOP::MenuEventListener::RegisterMenu();
     POOP::LocChangeEv::RegisterCellEvent();
+    POOP::QLoot::RegisterQuickLootHandler();
     POOP::FORMS::LoadForms();
+
     break;
   case SKSE::MessagingInterface::kPostLoadGame:
     POOP::FillInFoll();

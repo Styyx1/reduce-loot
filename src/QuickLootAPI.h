@@ -209,7 +209,7 @@ namespace QuickLoot::API
 		{
 			using GetInterfaceProc = TInterface* (*)();
 
-			const auto dllHandle = GetModuleHandleA(SERVER_PLUGIN_NAME);
+			const auto dllHandle = REX::W32::GetModuleHandleA(SERVER_PLUGIN_NAME);
 			if (!dllHandle) {
 				return nullptr;
 			}
