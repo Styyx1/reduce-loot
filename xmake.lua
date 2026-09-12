@@ -11,6 +11,7 @@ set_project(MOD_NAME)
 set_version(MOD_VERSION)
 set_license("GPL-3.0")
 set_warnings("allextra")
+
 set_config("commonlib_toml", true)
 set_config("use-fui", true)
 add_rules("mode.debug", "mode.releasedbg")

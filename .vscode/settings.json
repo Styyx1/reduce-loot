@@ -4,7 +4,11 @@
     "--compile-commands-dir=${workspaceFolder}/.vscode",
     "--background-index",
     "--completion-style=detailed",
-    "--pch-storage=disk"
+    "--pch-storage=disk",
+    "--header-insertion=iwyu",
+    "--header-insertion-decorators",
+    "--function-arg-placeholders=0",
+    "--all-scopes-completion"
   ],
   "files.associations": {
     "*.h": "cpp",
@@ -13,7 +17,6 @@
   },
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
-
   "[cpp]": {
     "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
   }

@@ -1,15 +1,11 @@
-#include "RE/B/BGSActorCellEvent.h"
-#include "RE/B/BGSFootstep.h"
-#include "RE/B/BSTEvent.h"
-#include "REX/TSingleton.h"
 using namespace StyyxUtil;
 
 // Constants:
 constexpr auto PLUGIN_NAME = "dropchances.esl";
-constexpr RE::FormID RAGS_CHEST_ID = 0x1;
-constexpr RE::FormID RAGS_LEGS_ID = 0x2;
 constexpr RE::FormID EXCEPTION_LIST_ID = 0x3;
 constexpr RE::FormID EXCEPTION_KYWD_ID = 0x4;
+constexpr RE::FormID DAE_ART_ID = 0xA8668; // Skyrim
+constexpr RE::FormID DISALLOW_ID = 0xC27BD;
 
 constexpr auto TOML_P_D = "Data/SKSE/Plugins/drop-chances.toml";
 constexpr auto TOML_P_C = "Data/SKSE/Plugins/drop-chances_custom.toml";
@@ -24,18 +20,18 @@ bool openingActorInventory = false;
 std::unordered_map<RE::TESObjectREFR *, std::unordered_set<RE::FormID>>
     rejectedItems;
 RE::TESObjectREFR *openingRef{};
+std::unordered_set<RE::FormID> g_teamMateStorage{};
 
 namespace POOP {
 
 namespace FORMS {
-inline RE::TESObjectARMO *replacer_rags_chest{nullptr};
-inline RE::TESObjectARMO *replacer_rags_legs{nullptr};
 inline RE::BGSListForm *exception_formlist{nullptr};
 inline RE::BGSListForm *exception_keyword_formlist{nullptr};
+inline RE::BGSKeyword *daedric_artifact{nullptr};
+inline RE::BGSKeyword *disallow_ench{nullptr};
 
 bool AllFormsValid() {
-  return replacer_rags_chest && replacer_rags_legs && exception_formlist &&
-         exception_keyword_formlist;
+  return exception_formlist && exception_keyword_formlist;
 }
 
 void LoadForms() {
@@ -46,14 +42,13 @@ void LoadForms() {
   }
   auto dh = RE::TESDataHandler::GetSingleton();
 
-  replacer_rags_chest =
-      dh->LookupForm<RE::TESObjectARMO>(RAGS_CHEST_ID, PLUGIN_NAME);
-  replacer_rags_legs =
-      dh->LookupForm<RE::TESObjectARMO>(RAGS_LEGS_ID, PLUGIN_NAME);
   exception_formlist =
       dh->LookupForm<RE::BGSListForm>(EXCEPTION_LIST_ID, PLUGIN_NAME);
   exception_keyword_formlist =
       dh->LookupForm<RE::BGSListForm>(EXCEPTION_KYWD_ID, PLUGIN_NAME);
+
+  daedric_artifact = dh->LookupForm<RE::BGSKeyword>(DAE_ART_ID, "Skyrim.esm");
+  disallow_ench = dh->LookupForm<RE::BGSKeyword>(DISALLOW_ID, "Skyrim.esm");
 
   if (!AllFormsValid()) {
     REX::FAIL("Could not load all needed forms, make sure the mod is fully "
@@ -73,8 +68,7 @@ inline REX::TOML::F32 drop_removal_chance_armor{
 inline REX::TOML::F32 drop_removal_chance_jewelry{
     TOML_SEC_SET, "fDropRemoveChanceJewelry", 50.0f};
 
-inline REX::TOML::Bool never_replace_enchanted{TOML_SEC_SET,
-                                               "bNeverRemoveEnchanted", true};
+inline REX::TOML::Bool replace_enchanted{TOML_SEC_SET, "bDropEnchanted", false};
 
 void UpdateSettings(const bool a_save = false) {
   auto t = REX::TSingleton<REX::FTomlSettingStore>::GetSingleton();
@@ -83,6 +77,22 @@ void UpdateSettings(const bool a_save = false) {
 }
 
 } // namespace CONF
+
+void FillInFoll() {
+  auto player = RE::PlayerCharacter::GetSingleton();
+  auto potential_follower = ActorUtil::GetNearbyActors(player, 4096, false);
+
+  for (auto &a : potential_follower) {
+
+    if (!a || !a->IsPlayerTeammate()) {
+      continue;
+    }
+    if (g_teamMateStorage.contains(a->GetFormID())) {
+      continue;
+    }
+    g_teamMateStorage.insert(a->GetFormID());
+  }
+}
 
 struct LocChangeEv : REX::TSingleton<LocChangeEv>,
                      RE::BSTEventSink<RE::BGSActorCellEvent> {
@@ -111,13 +121,38 @@ struct LocChangeEv : REX::TSingleton<LocChangeEv>,
         auto *reference = entry.first;
         return !reference || reference->GetParentCell() != cell;
       });
+      FillInFoll();
     }
+
+    if (a_event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
+      FillInFoll();
+    }
+
     return RE::BSEventNotifyControl::kContinue;
   }
 };
 
+struct Updater {
+
+  static void Call(RE::PlayerCharacter *a_player, float a_delta) {
+
+    static TimerUtil t;
+    if (!t.IsRunning()) {
+      t.Start();
+      FillInFoll();
+    }
+    if (t.ElapsedSeconds() >= 480) {
+      t.Reset();
+      FillInFoll();
+    }
+    func(a_player, a_delta);
+  }
+  static inline REL::THookVFT func{RE::VTABLE_PlayerCharacter[0], 0xad, Call};
+};
+
 // heavily inspired and mostly copied from:
 // https://github.com/Horf/HiddenLoot/blob/97b085ead7b7fd1fd3c8810cf617d2b515ecaf0a/src/LootHook.h#L95
+// comments describe what I added as required by GPL iirc
 struct MenuEventListener : REX::TSingleton<MenuEventListener>,
                            RE::BSTEventSink<RE::MenuOpenCloseEvent> {
   std::atomic<bool> bLootMenuOpen{false};
@@ -180,6 +215,7 @@ struct MenuEventListener : REX::TSingleton<MenuEventListener>,
   }
 };
 
+// This is a tool to be used for penetration testing
 struct OpenInvActorHook {
   static void Call(RE::TESObjectREFR *a_ref,
                    RE::ContainerMenu::ContainerMode a_mode) {
@@ -191,6 +227,8 @@ struct OpenInvActorHook {
 
     func(a_ref, a_mode);
 
+    // TODO: find any way to handle Quickloot IE, maybe its api, maybe with the
+    // menu listener from reduced loot, idk yet
     auto menu = MenuEventListener::GetSingleton();
     if (menu->bContainerMenuOpen) {
       openingActorInventory = false;
@@ -200,23 +238,37 @@ struct OpenInvActorHook {
   static inline REL::THook func{REL::ID(24715), 0x3E7, Call};
 };
 
+// TODO: check if requiem changes the keyword to something else or just changes
+// the keyword's EDID
 bool IsItemArtifact(RE::TESBoundObject *a_item) {
-  if (a_item->HasKeywordByEditorID("DaedricArtifact")) {
+
+  if (auto kwdf = a_item->As<RE::BGSKeywordForm>();
+      kwdf && kwdf->HasKeyword(FORMS::daedric_artifact)) {
     return true;
   }
   return false;
 }
 
 bool IsMaybeUniqueItem(RE::TESBoundObject *a_item) {
-  if (a_item->HasKeywordByEditorID("MagicDisallowEnchanting")) {
+  if (auto kwdf = a_item->As<RE::BGSKeywordForm>();
+      kwdf && kwdf->HasKeyword(FORMS::disallow_ench)) {
     return true;
   }
   return false;
 }
 
 bool IsItemEnchanted(RE::TESBoundObject *a_item, RE::TESObjectREFR *a_ref) {
-  auto inventory = a_ref->GetInventory(
-      [&](RE::TESBoundObject &a_object) { return &a_object == a_item; }, false);
+
+  // check pre-enchanted forms. They wouldn't be caught with the extra data
+  // bellow i think.
+  auto ench = a_item->As<RE::TESEnchantableForm>();
+  if (ench) {
+    if (ench->formEnchanting) {
+      return true;
+    }
+  }
+
+  auto inventory = a_ref->GetInventory();
 
   if (auto it = inventory.find(a_item); it != inventory.end()) {
     auto entry = it->second.second.get();
@@ -225,14 +277,15 @@ bool IsItemEnchanted(RE::TESBoundObject *a_item, RE::TESObjectREFR *a_ref) {
       return true;
     }
   }
-
   return false;
 }
-
+// needs more testing. May not work for everything.
+// Ebony mail is a contender for not working but that one should be covered by
+// the artifact check
+// Some quest items aren't actually quest items but the container is the alias
 bool IsQuestItem(RE::TESBoundObject *a_item, RE::TESObjectREFR *a_ref) {
 
-  auto inventory = a_ref->GetInventory(
-      [&](RE::TESBoundObject &a_object) { return &a_object == a_item; }, false);
+  auto inventory = a_ref->GetInventory();
 
   if (auto it = inventory.find(a_item); it != inventory.end()) {
 
@@ -258,6 +311,11 @@ bool IsItemExcluded(RE::TESBoundObject *a_item) {
 }
 
 bool CanHideItem(RE::TESBoundObject *a_item, RE::TESObjectREFR *a_ref) {
+
+  if (g_teamMateStorage.contains(a_ref->GetFormID())) {
+    return false;
+  }
+
   if (IsItemExcluded(a_item)) {
     return false;
   }
@@ -266,7 +324,9 @@ bool CanHideItem(RE::TESBoundObject *a_item, RE::TESObjectREFR *a_ref) {
     return false;
   }
 
-  if (!CONF::never_replace_enchanted.GetValue()) {
+  auto drop_enchants = CONF::replace_enchanted.GetValue();
+
+  if (!drop_enchants) {
     if (IsItemEnchanted(a_item, a_ref)) {
       return false;
     }
@@ -308,8 +368,6 @@ bool ProcessItem(RE::TESBoundObject *a_item, bool a_original) {
     return a_original;
   }
 
-  // check if actor had items processed before, return false for those items
-  // that shouldn't be shown.
   if (openingRef) {
     if (auto it = rejectedItems.find(openingRef);
         it != rejectedItems.end() && it->second.contains(a_item->GetFormID())) {
@@ -317,14 +375,12 @@ bool ProcessItem(RE::TESBoundObject *a_item, bool a_original) {
     }
   }
 
-  // only runs once per actor ensured by OpenInvActorHook
   if (openingActorInventory && openingRef && CanHideItem(a_item, openingRef)) {
     auto cmp = GetActualChance(a_item);
     auto remove = RandomiserUtil::IsPercentageChanceFloat(cmp);
-    // if randomiser returns true, skip the map cause i only need hidden items
-    // true means item should be shown!
+
     if (remove) {
-      REX::INFO("chance for {} is: {}", a_item->GetName(), cmp);
+      // REX::INFO("chance for {} is: {}", a_item->GetName(), cmp);
       rejectedItems[openingRef].insert(a_item->GetFormID());
       return false;
     }
@@ -353,6 +409,12 @@ void List(SKSE::MessagingInterface::Message *a_msg) {
     POOP::MenuEventListener::RegisterMenu();
     POOP::LocChangeEv::RegisterCellEvent();
     POOP::FORMS::LoadForms();
+    break;
+  case SKSE::MessagingInterface::kPostLoadGame:
+    POOP::FillInFoll();
+    break;
+  default:
+    break;
   }
 }
 

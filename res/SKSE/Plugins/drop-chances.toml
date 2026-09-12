@@ -1,6 +1,5 @@
 [DropSettings]
-fDropRemoveChanceWeapons = 50.0
-fDropRemoveChanceArmor = 50.0
-fDropRemoveChanceJewelry = 50.0
-bReplaceArmorWithRags = false
-bNeverRemoveEnchanted = true
+fDropRemoveChanceWeapons = 100.0
+fDropRemoveChanceArmor = 100.0
+fDropRemoveChanceJewelry = 100.0
+bDropEnchanted = false
