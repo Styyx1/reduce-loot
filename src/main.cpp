@@ -18,7 +18,6 @@ bool IsRelevantMenuOpen    = false;
 bool openingActorInventory = false;
 
 // store processed actor + hidden items.
-// should maybe clear map on location change or something
 std::unordered_map<RE::TESObjectREFR*, std::unordered_set<RE::FormID>> rejectedItems;
 RE::TESObjectREFR* openingRef{};
 std::unordered_set<RE::FormID> g_teamMateStorage{};
@@ -207,7 +206,6 @@ namespace POOP
         }
     };
 
-    // This is a tool to be used for penetration testing
     struct OpenInvActorHook
     {
         static void Call(RE::TESObjectREFR* a_ref, RE::ContainerMenu::ContainerMode a_mode)
