@@ -5,7 +5,7 @@ else
 end
 includes("lib/commonlibsse", "extern/styyx-utils")
 local MOD_NAME = "styyx-reduce-loot"
-local MOD_VERSION = "1.0.0"
+local MOD_VERSION = "2.0.0"
 local MOD_DESC = "reduces loot gained"
 set_project(MOD_NAME)
 set_version(MOD_VERSION)
